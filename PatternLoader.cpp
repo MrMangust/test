@@ -73,12 +73,21 @@ void OSFillPatterns( std::unordered_map<ptr_t*, OffsetData>& patterns, SymbolDat
     {
         // LdrpHandleTlsData
         // 74 33 44 8D 43 09
-        auto offset = IsWindows10RS4OrGreater() ? 0x44 : 0x43;
+        auto offset = 0x43;
+        if(IsWindows1019H1OrGreater())
+            offset = 0x46;
+        else if (IsWindows10RS4OrGreater())
+            offset = 0x44;
+
         patterns.emplace( &result.LdrpHandleTlsData64, OffsetData{ "\x74\x33\x44\x8d\x43\x09", true, offset } );
 
         // RtlInsertInvertedFunctionTable
-        // 8B FA 49 8D 43 20
-        patterns.emplace( &result.RtlInsertInvertedFunctionTable64, OffsetData{ "\x8b\xfa\x49\x8d\x43\x20", true, 0x10 } );
+        // 48 8D 54 24 58 48 8B F9 E8 - 20H1
+        // 8B FA 49 8D 43 20 - RS3-19H2
+        if (IsWindows1020H1OrGreater())
+            patterns.emplace( &result.RtlInsertInvertedFunctionTable64, OffsetData{ "\x48\x8d\x54\x24\x58\x48\x8b\xf9\xe8", true, 0x11 } );
+        else
+            patterns.emplace( &result.RtlInsertInvertedFunctionTable64, OffsetData{ "\x8b\xfa\x49\x8d\x43\x20", true, 0x10 } );
 
         // RtlpInsertInvertedFunctionTableEntry
         // 49 8B E8 48 8B FA 0F 84
@@ -93,15 +102,31 @@ void OSFillPatterns( std::unordered_map<ptr_t*, OffsetData>& patterns, SymbolDat
         patterns.emplace( &result.LdrpInvertedFunctionTable32, OffsetData{ "\x33\xF6\x46\x3B\xC6", false, -1, -0x1B } );
 
         // LdrpHandleTlsData
-        // 33 F6 85 C0 79 03 - RS5+
-        // 8B C1 8D 4D AC/BC 51 - RS3-RS4
-        const auto pattern = IsWindows10RS4OrGreater() ? "\x8b\xc1\x8d\x4d\xac\x51" : "\x8b\xc1\x8d\x4d\xbc\x51";
-        const auto data = IsWindows10RS5OrGreater() ? OffsetData{ "\x33\xf6\x85\xc0\x79\x03", false, 0x2C } : OffsetData{ pattern, false, 0x18 };
-        patterns.emplace( &result.LdrpHandleTlsData32, data );
+        // 33 F6 85 C0 79 03 - RS5-20H1
+        // 8B C1 8D 4D AC/BC 51 - RS3/RS4
+        auto pattern = "\x8b\xc1\x8d\x4d\xbc\x51";
+        if (IsWindows10RS5OrGreater())
+            pattern = "\x33\xf6\x85\xc0\x79\x03";
+        else if (IsWindows10RS4OrGreater())
+            pattern = "\x8b\xc1\x8d\x4d\xac\x51";
+
+        offset = 0x18;
+        if (IsWindows1020H1OrGreater())
+            offset = 0x2C;
+        else if (IsWindows1019H1OrGreater())
+            offset = 0x2E;
+        else if (IsWindows10RS5OrGreater())
+            offset = 0x2C;
+
+        patterns.emplace( &result.LdrpHandleTlsData32, OffsetData{ pattern, false, offset } );
 
         // LdrProtectMrdata
-        // 75 24 85 F6 75 08
-        patterns.emplace( &result.LdrProtectMrdata, OffsetData{ "\x75\x24\x85\xf6\x75\x08", false, 0x1C } );
+        // 75 25 85 F6 75 08  - 20H1
+        // 75 24 85 F6 75 08  - RS3-19H2
+        if(IsWindows1020H1OrGreater())
+            patterns.emplace( &result.LdrProtectMrdata, OffsetData{ "\x75\x25\x85\xf6\x75\x08", false, 0x1D } );
+        else
+            patterns.emplace( &result.LdrProtectMrdata, OffsetData{ "\x75\x24\x85\xf6\x75\x08", false, 0x1C } );
     }
     else if (IsWindows10RS2OrGreater())
     {
